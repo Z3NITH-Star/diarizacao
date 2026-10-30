@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+*.tar
+*.tar.gz
+.env
+.env.*
