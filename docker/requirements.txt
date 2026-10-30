@@ -1,0 +1,26 @@
+# =============================================================================
+# requirements.txt — Stack pinada para diarização (build CPU)
+# =============================================================================
+# Gate: `pip check` deve retornar "No broken requirements found".
+# Conflito numpy/whisperx/pyannote é decidido pelo CI — NÃO contornar.
+#
+# IMPORTANTE: torch e torchaudio NÃO entram aqui. São instalados pelo
+# Dockerfile via `--index-url "${TORCH_INDEX}"`, ANTES deste arquivo.
+# =============================================================================
+
+# Core (pin explícito — pyannote 3.x + whisperx 3.1.x exigem <2.0)
+numpy==1.26.4
+
+# Diarização
+pyannote.audio==3.4.0
+
+# ASR
+whisperx==3.1.1
+faster-whisper==1.0.3
+
+# Build tooling (pin provisório — validar contra freeze do build verde)
+setuptools==75.6.0
+
+# Lightning (fixado — pull transitivo do pyannote puxaria versões voláteis)
+pytorch-lightning==2.5.0.post0
+lightning-utilities==0.14.0

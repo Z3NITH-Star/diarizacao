@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+*.tar
+*.tar.gz
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.DS_Store

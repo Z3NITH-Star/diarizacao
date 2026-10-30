@@ -1,0 +1,143 @@
+name: build-diarizacao
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'docker/**'
+      - '.github/workflows/build-diarizacao.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build-${{ matrix.arch }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            continue_on_error: false
+          - arch: arm64
+            continue_on_error: true
+    continue-on-error: ${{ matrix.continue_on_error }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: QEMU (arm64)
+        if: matrix.arch == 'arm64'
+        uses: docker/setup-qemu-action@v3
+
+      - name: Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # ---------------------------------------------------------------- BUILD
+      - name: Build
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ./docker
+          file: ./docker/Dockerfile
+          platforms: linux/${{ matrix.arch }}
+          load: true
+          tags: diarizacao:${{ github.sha }}-${{ matrix.arch }}
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+        continue-on-error: ${{ matrix.continue_on_error }}
+
+      # ---------------------------------------------------------------- M2: pip check (com gate)
+      - name: pip check
+        id: pip_check
+        if: steps.build.outcome == 'success'
+        run: |
+          set -euo pipefail
+          docker run --rm --entrypoint pip \
+            diarizacao:${{ github.sha }}-${{ matrix.arch }} check \
+            | tee "$RUNNER_TEMP/pip_check.txt"
+          grep -q "No broken requirements found" "$RUNNER_TEMP/pip_check.txt" \
+            || { echo "::error::pip check NÃO retornou 'No broken requirements found'"; exit 1; }
+
+      # ---------------------------------------------------------------- M3: --check (com gate)
+      - name: --check
+        id: diarize_check
+        if: steps.build.outcome == 'success'
+        run: |
+          set -euo pipefail
+          docker run --rm diarizacao:${{ github.sha }}-${{ matrix.arch }} --check \
+            | tee "$RUNNER_TEMP/diarize_check.txt"
+          grep -q "=== --check OK ===" "$RUNNER_TEMP/diarize_check.txt" \
+            || { echo "::error::--check NÃO terminou com '=== --check OK ==='"; exit 1; }
+
+      # ---------------------------------------------------------------- evidência
+      - name: pip freeze
+        if: steps.build.outcome == 'success'
+        run: |
+          set -euo pipefail
+          docker run --rm --entrypoint pip \
+            diarizacao:${{ github.sha }}-${{ matrix.arch }} freeze \
+            > "$RUNNER_TEMP/pip_freeze.txt"
+
+      # ---------------------------------------------------------------- tar + sha256
+      - name: tar + sha256
+        if: steps.build.outcome == 'success'
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/artifacts"
+          TAR="$RUNNER_TEMP/artifacts/diarizacao-${{ matrix.arch }}.tar"
+          docker save diarizacao:${{ github.sha }}-${{ matrix.arch }} -o "$TAR"
+          sha256sum "$TAR" > "$TAR.sha256"
+          cp "$RUNNER_TEMP/pip_freeze.txt" "$RUNNER_TEMP/artifacts/"
+          cp "$RUNNER_TEMP/pip_check.txt" "$RUNNER_TEMP/artifacts/" || true
+          cp "$RUNNER_TEMP/diarize_check.txt" "$RUNNER_TEMP/artifacts/" || true
+
+      - name: Upload artifact
+        if: steps.build.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: diarizacao-${{ matrix.arch }}-${{ github.sha }}
+          path: $RUNNER_TEMP/artifacts/
+          retention-days: 30
+
+      # ---------------------------------------------------------------- summary
+      - name: Evidência no GITHUB_STEP_SUMMARY
+        if: always()
+        run: |
+          set -euo pipefail
+          {
+            echo "## Build diarização — \`${{ matrix.arch }}\`"
+            echo ""
+            echo "| Campo | Valor |"
+            echo "| --- | --- |"
+            echo "| build | \`${{ steps.build.outcome }}\` |"
+            echo "| pip check | \`${{ steps.pip_check.outcome }}\` |"
+            echo "| --check | \`${{ steps.diarize_check.outcome }}\` |"
+            echo "| commit | \`${{ github.sha }}\` |"
+            echo "| data | \`$(date -u +%Y-%m-%dT%H:%M:%SZ)\` |"
+            echo "| arch | \`${{ matrix.arch }}\` |"
+            echo ""
+            if [ -f "$RUNNER_TEMP/pip_check.txt" ]; then
+              echo "### pip check"; echo '```text'
+              cat "$RUNNER_TEMP/pip_check.txt"; echo '```'
+            fi
+            if [ -f "$RUNNER_TEMP/diarize_check.txt" ]; then
+              echo "### --check"; echo '```text'
+              cat "$RUNNER_TEMP/diarize_check.txt"; echo '```'
+            fi
+            if [ -f "$RUNNER_TEMP/pip_freeze.txt" ]; then
+              echo "### pip freeze"; echo '```text'
+              cat "$RUNNER_TEMP/pip_freeze.txt"; echo '```'
+            fi
+            if [ -f "$RUNNER_TEMP/artifacts/diarizacao-${{ matrix.arch }}.tar.sha256" ]; then
+              echo "### SHA-256"; echo '```text'
+              cat "$RUNNER_TEMP/artifacts/diarizacao-${{ matrix.arch }}.tar.sha256"; echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
