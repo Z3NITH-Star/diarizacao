@@ -5,6 +5,7 @@ on:
   push:
     branches: [main]
     paths:
+      - 'diarize.py'
       - 'docker/**'
       - '.github/workflows/build-diarizacao.yml'
 
@@ -44,7 +45,7 @@ jobs:
         id: build
         uses: docker/build-push-action@v6
         with:
-          context: ./docker
+          context: .
           file: ./docker/Dockerfile
           platforms: linux/${{ matrix.arch }}
           load: true

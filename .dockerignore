@@ -1,0 +1,12 @@
+.git
+.env
+.env.*
+*.tar
+*.tar.gz
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+audio/
+saidas/
+models/

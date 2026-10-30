@@ -33,7 +33,7 @@ RUN pip install --no-cache-dir --index-url "${TORCH_INDEX}" \
         "torchvision==${TORCHVISION_VERSION}"
 
 # 2) requirements (SEM torch/torchaudio/torchvision)
-COPY requirements.txt /app/requirements.txt
+COPY docker/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
 # 3) GATE: pip check obrigatório — falha o build se houver conflito
