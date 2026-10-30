@@ -12,7 +12,7 @@
 numpy==1.26.4
 
 # Diarização
-pyannote.audio==3.4.0
+pyannote.audio==3.1.1
 
 # ASR
 whisperx==3.1.1
