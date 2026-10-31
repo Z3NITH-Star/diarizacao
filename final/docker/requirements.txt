@@ -1,0 +1,63 @@
+# =============================================================================
+# docker/requirements.txt
+# Matriz: Python 3.12 + PyTorch 2.5.1 CPU + WhisperX 3.1.1
+#         + pyannote.audio 3.1.1 + faster-whisper 1.0.3
+# Verificado contra requires_dist do PyPI em 2026-10-30.
+# Ver: FA-Pipeline/03-Registros/2026-10-30-matriz-dependencias-pypi.md
+# NÃO mudar pins [LOCK] sem rodar o build com --progress=plain.
+# =============================================================================
+
+# ---- Núcleo numérico (compatível com Python 3.12) --------------------------
+numpy==1.26.4                      # [LOCK] última 1.x com wheel cp312; ctranslate2 4.x e onnxruntime<1.20 exigem numpy<2
+
+# ---- Motor de inferência (puxado pelo faster-whisper) ----------------------
+faster-whisper==1.0.3              # exige ctranslate2>=4.0,<5 ; onnxruntime>=1.14,<2 ; tokenizers>=0.13,<1 ; av>=11,<13
+ctranslate2==4.4.0                 # [LOCK] estável para CPU/cuDNN8; <5
+onnxruntime==1.19.2                # [LOCK] última 1.x que aceita numpy 1.x
+av==12.3.0                         # [LOCK] dentro de >=11,<13, com wheel manylinux
+
+# ---- Stack HuggingFace (transitivos de faster-whisper + pyannote) ----------
+huggingface-hub==0.26.2            # [LOCK] transformers 4.44.2 exige >=0.23.2,<1.0
+tokenizers==0.19.1                 # [LOCK] transformers 4.44.2 exige >=0.19,<0.20  <-- CORRIGIDO (era 0.20.1)
+transformers==4.44.2               # [LOCK] exigido por whisperx
+
+# ---- WhisperX + diarização -------------------------------------------------
+whisperx==3.1.1                    # pina pyannote.audio==3.1.1 (exato) + faster-whisper>=0.10
+pyannote.audio==3.1.1              # lightning>=2.0.1 ; torch>=2.0 ; torchaudio>=2.0
+
+# ---- Stack Lightning -------------------------------------------------------
+lightning==2.5.0.post0             # [LOCK] umbrella; casar com pytorch-lightning
+pytorch-lightning==2.5.0.post0     # [LOCK] mesmo release do umbrella
+lightning-utilities==0.14.0        # [LOCK] requerido por pytorch-lightning
+
+# ---- Transitivos do pyannote (pins de melhor esforço) ----------------------
+pyannote.core==5.0.0
+pyannote.database==5.1.0           # existe no PyPI (py3-none-any), conferido em 2026-10-30
+pyannote.metrics==3.2.1
+pyannote.pipeline==3.0.1
+torch-audiomentations==0.11.1
+torchmetrics==1.4.3
+speechbrain==1.0.2                 # torch>=1.9, numpy<2 — serve com torch 2.5 e numpy 1.26
+asteroid-filterbanks==0.4.0
+omegaconf==2.3.0
+semver==3.0.2
+soundfile==0.12.1
+tensorboardX==2.6.2.2
+einops==0.8.0
+rich==13.9.4
+pytorch-metric-learning==2.5.0
+
+# ---- Runtime do whisperx ---------------------------------------------------
+pandas==2.2.3
+nltk==3.9.1
+
+# ---- Empacotamento ---------------------------------------------------------
+# setuptools: whisperx exige >=65 e o python:3.12-slim não traz setuptools.
+# packaging: lightning 2.5.0.post0 exige `<25.0` — sem pin, uma release futura
+#            do packaging derruba a resolução.
+setuptools==75.6.0
+packaging==24.2
+
+# NOTA: `pip` e `wheel` NÃO entram aqui. O Dockerfile faz
+# `pip install --upgrade pip setuptools wheel` antes; listar `pip` neste arquivo
+# faz o pip se desinstalar/reinstalar no meio da própria execução.
