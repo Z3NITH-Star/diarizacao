@@ -1,26 +1,44 @@
 # =============================================================================
-# requirements.txt — Stack pinada para diarização (build CPU)
-# =============================================================================
-# Gate: `pip check` deve retornar "No broken requirements found".
-# Conflito numpy/whisperx/pyannote é decidido pelo CI — NÃO contornar.
-#
-# IMPORTANTE: torch e torchaudio NÃO entram aqui. São instalados pelo
-# Dockerfile via `--index-url "${TORCH_INDEX}"`, ANTES deste arquivo.
+# docker/requirements.txt — Geração A
+# Python 3.12 + torch 2.5.1+cpu (fora daqui) + whisperx 3.1.1 + pyannote 3.1.1
 # =============================================================================
 
-# Core (pin explícito — pyannote 3.x + whisperx 3.1.x exigem <2.0)
 numpy==1.26.4
 
-# Diarização
+faster-whisper==1.0.3
+ctranslate2==4.4.0
+onnxruntime==1.19.2
+av==12.3.0
+
+huggingface-hub==0.26.2
+tokenizers==0.19.1
+transformers==4.44.2
+
+whisperx==3.1.1
 pyannote.audio==3.1.1
 
-# ASR
-whisperx==3.1.1
-faster-whisper==1.0.3
-
-# Build tooling (pin provisório — validar contra freeze do build verde)
-setuptools==75.6.0
-
-# Lightning (fixado — pull transitivo do pyannote puxaria versões voláteis)
+lightning==2.5.0.post0
 pytorch-lightning==2.5.0.post0
 lightning-utilities==0.14.0
+
+pyannote.core==5.0.0
+pyannote.database==5.1.0
+pyannote.metrics==3.2.1
+pyannote.pipeline==3.0.1
+torch-audiomentations==0.11.1
+torchmetrics==1.4.3
+speechbrain==1.0.2
+asteroid-filterbanks==0.4.0
+omegaconf==2.3.0
+semver==3.0.2
+soundfile==0.12.1
+tensorboardX==2.6.2.2
+einops==0.8.0
+rich==13.9.4
+pytorch-metric-learning==2.5.0
+
+pandas==2.2.3
+nltk==3.9.1
+
+setuptools==75.6.0
+packaging==24.2
