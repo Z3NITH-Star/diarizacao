@@ -13,6 +13,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     HF_HOME=/models \
     HF_HUB_DISABLE_TELEMETRY=1
 
+# deps de sistema + build-essential (sdists do grafo precisam de gcc)
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ffmpeg \
         libsndfile1 \
@@ -23,20 +24,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 RUN mkdir -p /audio /saidas /models
 
-# 1) torch stack (CPU por padrão; GPU no M5)
+# 1) torch stack — CPU por padrão; GPU no M5 via --build-arg
 RUN pip install --no-cache-dir --index-url "${TORCH_INDEX}" \
         "torch==${TORCH_VERSION}" \
         "torchaudio==${TORCH_VERSION}" \
         "torchvision==${TORCHVISION_VERSION}"
 
-# 2) requirements — COPY sem prefixo (context = ./docker)
+# 2) requirements — COPY SEM PREFIXO (context = ./docker)
 COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
-# 3) gate: pip check
+# 3) gate: pip check — build quebra aqui se houver conflito
 RUN pip check
 
-# 4) app
+# 4) app — COPY SEM PREFIXO
 COPY diarize.py /app/diarize.py
 
 VOLUME ["/audio", "/saidas", "/models"]
