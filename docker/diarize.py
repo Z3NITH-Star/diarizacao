@@ -48,6 +48,7 @@ def _print_banner(title: str) -> None:
 def run_check() -> int:
     """M3: valida a stack sem áudio, sem traceback em sucesso."""
     try:
+        import ctranslate2
         import torch
         import torchaudio
         import pyannote.audio
@@ -56,9 +57,11 @@ def run_check() -> int:
         _print_banner("CHECK DE STACK — diarize.py")
         print(f"python:          {sys.version.split()[0]}")
         print(f"torch:           {torch.__version__}")
+        print(f"torch CUDA build: {torch.version.cuda or 'CPU-only'}")
         print(f"torchaudio:      {torchaudio.__version__}")
         print(f"pyannote.audio:  {pyannote.audio.__version__}")
         print(f"whisperx:        {getattr(whisperx, '__version__', 'unknown')}")
+        print(f"ctranslate2:     {ctranslate2.__version__}")
         print(f"cuda available:  {torch.cuda.is_available()}")
         print()
         print("AVISO DE SEGURANÇA:")
@@ -153,8 +156,14 @@ def _run_whisperx_diarization(
     import whisperx
     from pyannote.audio import Pipeline
 
+    if device == "cuda" and not torch.cuda.is_available():
+        raise RuntimeError(
+            "CUDA foi solicitado, mas não está disponível. Inicie o container com "
+            "'--gpus all' e verifique o driver NVIDIA e o NVIDIA Container Toolkit."
+        )
+
     normalized = _normalize_audio_for_diarization(audio_path, output_dir)
-    device_name = device if device == "cuda" and torch.cuda.is_available() else "cpu"
+    device_name = device
 
     asr_model = whisperx.load_model(
         "large-v3",
@@ -163,8 +172,9 @@ def _run_whisperx_diarization(
         language=language,
     )
 
+    audio = whisperx.load_audio(str(normalized))
     result = asr_model.transcribe(
-        str(normalized),
+        audio,
         batch_size=batch_size,
         language=language,
         fp16=device_name == "cuda",
@@ -202,7 +212,7 @@ def run_diarize(
     audio_path: str,
     hf_token: str,
     model_name: str = "pyannote/speaker-diarization-3.1",
-    device: str = "cpu",
+    device: str = "cuda",
     output_dir: Optional[str] = None,
     language: str = "pt",
     batch_size: int = 8,
@@ -257,7 +267,7 @@ def main(argv: Optional[list] = None) -> int:
     parser.add_argument("--check", action="store_true", help="Valida a stack sem áudio (M3).")
     parser.add_argument("--audio", type=str, help="Arquivo de áudio ou pasta de áudios para diarização.")
     parser.add_argument("--model", type=str, default="pyannote/speaker-diarization-3.1", help="Modelo HF para diarização.")
-    parser.add_argument("--device", type=str, default="cpu", choices=["cpu", "cuda"], help="Device de inferência.")
+    parser.add_argument("--device", type=str, default="cuda", choices=["cpu", "cuda"], help="Device de inferência (padrão: cuda).")
     parser.add_argument("--output-dir", type=str, default="/saidas", help="Diretório de saída para JSON/CSV.")
     parser.add_argument("--language", type=str, default="pt", help="Idioma da ASR (ex.: pt, en).")
     parser.add_argument("--batch-size", type=int, default=8, help="Tamanho de batch do WhisperX.")
