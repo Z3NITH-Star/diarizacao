@@ -1,43 +1,41 @@
 # syntax=docker/dockerfile:1.7
-ARG PYTHON_IMAGE=python:3.12-slim-bookworm
-FROM ${PYTHON_IMAGE}
+# CUDA 12.4 runtime for the PyTorch cu124 wheels and CTranslate2 CUDA runtime.
+FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
 
-ARG TORCH_INDEX=https://download.pytorch.org/whl/cpu
-ARG TORCH_VERSION=2.5.1+cpu
-ARG TORCHVISION_VERSION=0.20.1+cpu
-
-ENV PYTHONDONTWRITEBYTECODE=1 \
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1 \
     HF_HOME=/models \
-    HF_HUB_DISABLE_TELEMETRY=1
+    HF_HUB_DISABLE_TELEMETRY=1 \
+    PATH=/opt/venv/bin:$PATH
 
-# deps de sistema + build-essential (sdists do grafo precisam de gcc)
 RUN apt-get update && apt-get install -y --no-install-recommends \
+        python3 \
+        python3-dev \
+        python3-venv \
         ffmpeg \
         libsndfile1 \
         ca-certificates \
         build-essential \
+    && python3 -m venv /opt/venv \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 RUN mkdir -p /audio /saidas /models
 
-# 1) torch stack — CPU por padrão; GPU no M5 via --build-arg
-RUN pip install --no-cache-dir --index-url "${TORCH_INDEX}" \
-        "torch==${TORCH_VERSION}" \
-        "torchaudio==${TORCH_VERSION}" \
-        "torchvision==${TORCHVISION_VERSION}"
+# Install the CUDA-enabled PyTorch 2.5.1/cu124 wheels before application deps.
+RUN python -m pip install --upgrade pip wheel \
+    && python -m pip install --index-url https://download.pytorch.org/whl/cu124 \
+        torch==2.5.1 \
+        torchaudio==2.5.1 \
+        torchvision==0.20.1
 
-# 2) requirements — COPY SEM PREFIXO (context = ./docker)
 COPY requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txt
+RUN python -m pip install -r /app/requirements.txt \
+    && python -m pip check
 
-# 3) gate: pip check — build quebra aqui se houver conflito
-RUN pip check
-
-# 4) app — COPY SEM PREFIXO
 COPY diarize.py /app/diarize.py
 
 VOLUME ["/audio", "/saidas", "/models"]
