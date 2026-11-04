@@ -1,12 +1,11 @@
 # =============================================================================
-# docker/requirements.txt — Geração A
-# Python 3.12 + torch 2.5.1+cpu (fora daqui) + whisperx 3.1.1 + pyannote 3.1.1
+# CUDA runtime stack — Python 3.10 / PyTorch 2.5.1 cu124 / WhisperX 3.1.1
 # =============================================================================
 
 numpy==1.26.4
 
 faster-whisper==1.0.3
-ctranslate2==4.4.0
+ctranslate2==4.7.2
 onnxruntime==1.19.2
 av==12.3.0
 
