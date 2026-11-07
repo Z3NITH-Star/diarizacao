@@ -1,0 +1,13 @@
+# docker/requirements-colab.txt — pins para Colab GPU (T4, CUDA 12.6)
+numpy==1.26.4
+pandas==2.2.2
+
+# torch com CUDA 12.4 (compatível com Colab e ctranslate2 >=4.5)
+torch==2.5.1+cu124
+torchaudio==2.5.1+cu124
+torchvision==0.20.1+cu124
+
+pyannote.audio==3.1.1
+whisperx==3.1.1
+faster-whisper==1.0.3
+ctranslate2==4.5.0          # primeira versão com cuDNN 9 estável
